@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wallet Sign-In</title>
+</head>
+<body>
+  <button id="loginBtn">Sign in with MetaMask</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  <script>
+    const loginBtn = document.getElementById('loginBtn');
+
+    loginBtn.onclick = async () => {
+      if (!window.ethereum) {
+        alert('MetaMask is not installed!');
+        return;
+      }
+
+      // 1. Connect wallet
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
+      const walletAddress = await signer.getAddress();
+
+      // 2. Get nonce from backend
+      const nonceRes = await fetch(`http://localhost:3000/get-nonce/${walletAddress}`);
+      const { nonce } = await nonceRes.json();
+
+      // 3. Sign the nonce
+      const signature = await signer.signMessage(nonce);
+
+      // 4. Send signature to backend for verification
+      const verifyRes = await fetch('http://localhost:3000/verify-signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: nonce, signature, walletAddress })
+      });
+
+      const result = await verifyRes.json();
+      alert(result.message);
+    };
+  </script>
+</body>
+</html>        
